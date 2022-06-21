@@ -58,6 +58,8 @@ public class SimpleZukiDatabase extends ZukiDatabase {
         config.addDataSourceProperty("cachePrepStmts", "true");
         config.addDataSourceProperty("prepStmtCacheSize", "50");
         config.addDataSourceProperty("prepStmtCacheSqlLimit", "512");
+        config.addDataSourceProperty("characterEncoding","utf8");
+        config.addDataSourceProperty("useUnicode","true");
 
         // Sets config for super class.
         setConfig(config);
