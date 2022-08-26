@@ -31,6 +31,18 @@ public abstract class ZukiDatabase {
     ExecutorService service = Executors.newFixedThreadPool(2);
 
     /**
+     * ResultSet type.
+     */
+    @Setter
+    int resultSetType = ResultSet.TYPE_FORWARD_ONLY;
+
+    /**
+     * Result set concurrency (only-read or editable)
+     */
+    @Setter
+    int resultSetConcurrency = ResultSet.CONCUR_READ_ONLY;
+
+    /**
      * Create data source.
      *
      * @param config connection config.
@@ -179,7 +191,8 @@ public abstract class ZukiDatabase {
     public CompletableFuture<Void> select(@NotNull String query, SelectCallback callback, Object... args) {
         return CompletableFuture.supplyAsync(() -> {
             try (Connection connection = connection()) {
-                Statement statement = args.length == 0 ? connection.createStatement() : connection.prepareStatement(query);
+                Statement statement = args.length == 0 ? connection.createStatement(resultSetType, resultSetConcurrency) :
+                        connection.prepareStatement(query, resultSetType, resultSetConcurrency);
 
                 if (args.length == 0) {
                     statement.execute(query);

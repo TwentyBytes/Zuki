@@ -65,18 +65,15 @@ public interface ZukiConfig {
         }
 
         switch (type) {
-            case TOML -> {
+            case TOML:
                 return new ObjectMapper(new TomlFactory()).readValue(file, SimpleZukiConfig.class);
-            }
-            case YAML -> {
+            case YAML:
                 return new ObjectMapper(new YAMLFactory()).readValue(file, SimpleZukiConfig.class);
-            }
-            case JSON -> {
+            case JSON:
                 JsonReader reader = new JsonReader((new FileReader(file)));
                 SimpleZukiConfig config = new Gson().fromJson(reader, SimpleZukiConfig.class);
                 reader.close();
                 return config;
-            }
         }
         return null;
     }
