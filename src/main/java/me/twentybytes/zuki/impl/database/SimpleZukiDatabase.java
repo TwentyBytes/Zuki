@@ -1,6 +1,7 @@
 package me.twentybytes.zuki.impl.database;
 
 import com.zaxxer.hikari.HikariConfig;
+import lombok.SneakyThrows;
 import me.twentybytes.zuki.api.config.ZukiConfig;
 import me.twentybytes.zuki.api.database.ZukiDatabase;
 import org.jetbrains.annotations.NotNull;
@@ -40,7 +41,11 @@ public class SimpleZukiDatabase extends ZukiDatabase {
      * @param username connection username.
      * @param password connection user password.
      */
+    @SneakyThrows
     public SimpleZukiDatabase(@NotNull String url, @NotNull String username, @NotNull String password) {
+        // preload driver class
+        Class.forName("com.mysql.jdbc.Driver");
+        
         HikariConfig config = new HikariConfig();
 
         // Connection data
