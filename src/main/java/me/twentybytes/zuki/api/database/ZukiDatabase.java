@@ -15,6 +15,7 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.sql.*;
+import java.util.Arrays;
 import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ExecutorService;
@@ -97,6 +98,10 @@ public abstract class ZukiDatabase {
      * @param stream input stream.
      */
     public ZukiDatabase stream(@NotNull InputStream stream) {
+        // real stacktrace
+        StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
+                Thread.currentThread().getStackTrace().length);
+
         service.execute(() -> {
             try (Connection connection = connection(); Scanner scanner = new Scanner(stream).useDelimiter(";")) {
                 while (scanner.hasNext()) {
@@ -113,7 +118,10 @@ public abstract class ZukiDatabase {
                     }
                 }
             } catch (Throwable throwable) {
-                throwable.printStackTrace();
+                System.err.println("Throwed SQL exception on stream method. Stacktrace:");
+                for (StackTraceElement traceElement : stackTrace)
+                    System.err.println("\tat " + traceElement);
+                //throwable.printStackTrace();
             }
         });
         return this;
@@ -151,6 +159,10 @@ public abstract class ZukiDatabase {
      * @return {@link CompletableFuture<Void>} result set.
      */
     public CompletableFuture<Void> update(@NotNull String query, UpdateCallback callback, Object... args) {
+        // real stacktrace
+        StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
+                Thread.currentThread().getStackTrace().length);
+
         return CompletableFuture.supplyAsync(() -> {
             try (Connection connection = connection()) {
                 Statement statement = args.length == 0 ? connection.createStatement() : connection.prepareStatement(query);
@@ -173,7 +185,10 @@ public abstract class ZukiDatabase {
                 }
                 statement.close();
             } catch (SQLException exception) {
-                exception.printStackTrace();
+                System.err.println("Throwed SQL exception on update method. Stacktrace:");
+                for (StackTraceElement traceElement : stackTrace)
+                    System.err.println("\tat " + traceElement);
+                //exception.printStackTrace();
             }
             return null;
         });
@@ -189,6 +204,10 @@ public abstract class ZukiDatabase {
      */
     @SneakyThrows
     public CompletableFuture<Void> select(@NotNull String query, SelectCallback callback, Object... args) {
+        // real stacktrace
+        StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
+                Thread.currentThread().getStackTrace().length);
+
         return CompletableFuture.supplyAsync(() -> {
             try (Connection connection = connection()) {
                 Statement statement = args.length == 0 ? connection.createStatement(resultSetType, resultSetConcurrency) :
@@ -213,7 +232,10 @@ public abstract class ZukiDatabase {
                     throwable.printStackTrace();
                 }
             } catch (SQLException exception) {
-                exception.printStackTrace();
+                System.err.println("Throwed SQL exception on select method. Stacktrace:");
+                for (StackTraceElement traceElement : stackTrace)
+                    System.err.println("\tat " + traceElement);
+                //exception.printStackTrace();
             }
             return null;
         });
