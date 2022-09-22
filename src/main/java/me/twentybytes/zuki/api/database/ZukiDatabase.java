@@ -118,9 +118,12 @@ public abstract class ZukiDatabase {
                     }
                 }
             } catch (Throwable throwable) {
-                System.err.println("Throwed SQL exception on stream method. Stacktrace:");
-                for (StackTraceElement traceElement : stackTrace)
+                System.err.println("Throwed SQL exception on stream method.");
+                System.err.println("Message: " + throwable.getMessage());
+                System.err.println("Stacktrace:");
+                for (StackTraceElement traceElement : stackTrace) {
                     System.err.println("\tat " + traceElement);
+                }
                 //throwable.printStackTrace();
             }
         });
@@ -186,8 +189,11 @@ public abstract class ZukiDatabase {
                 statement.close();
             } catch (SQLException exception) {
                 System.err.println("Throwed SQL exception on update method. Stacktrace:");
-                for (StackTraceElement traceElement : stackTrace)
+                System.err.println("Message: " + exception.getMessage());
+                System.err.println("Stacktrace:");
+                for (StackTraceElement traceElement : stackTrace) {
                     System.err.println("\tat " + traceElement);
+                }
                 //exception.printStackTrace();
             }
             return null;
@@ -233,8 +239,11 @@ public abstract class ZukiDatabase {
                 }
             } catch (SQLException exception) {
                 System.err.println("Throwed SQL exception on select method. Stacktrace:");
-                for (StackTraceElement traceElement : stackTrace)
+                System.err.println("Message: " + exception.getMessage());
+                System.err.println("Stacktrace:");
+                for (StackTraceElement traceElement : stackTrace) {
                     System.err.println("\tat " + traceElement);
+                }
                 //exception.printStackTrace();
             }
             return null;
