@@ -190,7 +190,7 @@ public abstract class ZukiDatabase {
             } catch (SQLException exception) {
                 System.err.println("Throwed SQL exception on update method. Stacktrace:");
                 System.err.println("Message: " + exception.getMessage());
-                System.err.println("Stacktrace:");
+                System.err.println("Stacktrace: ");
                 for (StackTraceElement traceElement : stackTrace) {
                     System.err.println("\tat " + traceElement);
                 }
@@ -237,6 +237,7 @@ public abstract class ZukiDatabase {
                 } catch (Throwable throwable) {
                     throwable.printStackTrace();
                 }
+                statement.close();
             } catch (SQLException exception) {
                 System.err.println("Throwed SQL exception on select method. Stacktrace:");
                 System.err.println("Message: " + exception.getMessage());

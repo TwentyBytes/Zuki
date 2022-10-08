@@ -6,8 +6,16 @@ package me.twentybytes.zuki.api.config;
 //import com.google.gson.Gson;
 //import com.google.gson.stream.JsonReader;
 
+import lombok.SneakyThrows;
 import me.twentybytes.zuki.impl.config.SimpleZukiConfig;
 import org.jetbrains.annotations.NotNull;
+import org.json.JSONObject;
+import org.json.JSONTokener;
+import org.yaml.snakeyaml.Yaml;
+
+import java.io.File;
+import java.io.FileInputStream;
+import java.util.Map;
 
 /**
  * @author TwentyBytes.
@@ -42,38 +50,57 @@ public interface ZukiConfig {
      */
     int port();
 
-//    String[] keys = {
-//            "address",
-//            "port",
-//            "database",
-//            "username",
-//            "password"
-//    };
+    String[] CONFIG_PARAMS = {
+            "address",
+            "port",
+            "database",
+            "username",
+            "password"
+    };
 
-//    /**
-//     * @param file config file.
-//     * @param type config parser.
-//     * @return     parsed ZukiConfig from file.
-//     */
-//    @SneakyThrows @NotNull
-//    static ZukiConfig from(@NotNull File file, @NotNull ConfigType type) {
-//        if (!file.exists()) {
-//            throw new IllegalStateException("Config file does`nt exists...");
-//        }
-//
-//        switch (type) {
-//            case TOML:
-//                return new ObjectMapper(new TomlFactory()).readValue(file, SimpleZukiConfig.class);
-//            case YAML:
-//                return new ObjectMapper(new YAMLFactory()).readValue(file, SimpleZukiConfig.class);
-//            case JSON:
-//                JsonReader reader = new JsonReader((new FileReader(file)));
-//                SimpleZukiConfig config = new Gson().fromJson(reader, SimpleZukiConfig.class);
-//                reader.close();
-//                return config;
-//        }
-//        return null;
-//    }
+    /**
+     * @param file config file.
+     * @param type config parser.
+     * @return     parsed ZukiConfig from file.
+     */
+    @SneakyThrows @NotNull
+    static ZukiConfig from(@NotNull File file, @NotNull ConfigType type) {
+        if (!file.exists()) {
+            throw new IllegalStateException("Config file does`nt exists...");
+        }
+
+        switch (type) {
+            case YAML:
+                try (FileInputStream stream = new FileInputStream(file)) {
+                    Map<String, Object> storage = new Yaml().load(stream);
+                    return new SimpleZukiConfig(
+                            (String) storage.get("address"),
+                            (int) storage.get("port"),
+                            (String) storage.get("database"),
+                            (String) storage.get("username"),
+                            (String) storage.get("password")
+                    );
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+            case JSON:
+                try (FileInputStream stream = new FileInputStream(file)) {
+                    JSONTokener tokener = new JSONTokener(stream);
+                    JSONObject object = new JSONObject(tokener);
+                    return new SimpleZukiConfig(
+                            object.optString("address"),
+                            object.optInt("port"),
+                            object.optString("database"),
+                            object.optString("username"),
+                            object.optString("password")
+                    );
+                } catch (Throwable throwable) {
+                    throwable.printStackTrace();
+                }
+        }
+
+        throw new IllegalStateException("WTF? How the code get here?");
+    }
 
     /**
      * @param address  config address.
