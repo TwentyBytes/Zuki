@@ -9,6 +9,7 @@ import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
 import me.twentybytes.zuki.api.callback.SelectCallback;
 import me.twentybytes.zuki.api.callback.UpdateCallback;
+import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 
 import java.io.File;
@@ -137,7 +138,7 @@ public abstract class ZukiDatabase {
      * @param args     arguments for prepared statement.
      * @return {@link CompletableFuture<Void>} result set.
      */
-    public CompletableFuture<Void> update(@NotNull String query, Object... args) {
+    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, Object... args) {
         return update(query, null, args);
     }
 
@@ -149,7 +150,7 @@ public abstract class ZukiDatabase {
      * @return {@link CompletableFuture<Void>} result set.
      */
     @SneakyThrows
-    public CompletableFuture<Void> select(@NotNull String query, Object... args) {
+    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, Object... args) {
         return select(query, null, args);
     }
 
@@ -161,7 +162,7 @@ public abstract class ZukiDatabase {
      * @param args     arguments for prepared statement.
      * @return {@link CompletableFuture<Void>} result set.
      */
-    public CompletableFuture<Void> update(@NotNull String query, UpdateCallback callback, Object... args) {
+    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, UpdateCallback callback, Object... args) {
         // real stacktrace
         StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
                 Thread.currentThread().getStackTrace().length);
@@ -209,7 +210,7 @@ public abstract class ZukiDatabase {
      * @return {@link CompletableFuture<Void>} result set.
      */
     @SneakyThrows
-    public CompletableFuture<Void> select(@NotNull String query, SelectCallback callback, Object... args) {
+    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, SelectCallback callback, Object... args) {
         // real stacktrace
         StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
                 Thread.currentThread().getStackTrace().length);
