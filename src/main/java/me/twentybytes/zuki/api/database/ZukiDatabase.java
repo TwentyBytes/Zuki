@@ -104,11 +104,11 @@ public abstract class ZukiDatabase {
                 Thread.currentThread().getStackTrace().length);
 
         service.execute(() -> {
+            Statement statement = null;
             try (Connection connection = connection(); Scanner scanner = new Scanner(stream).useDelimiter(";")) {
                 while (scanner.hasNext()) {
                     String query = scanner.next().trim();
 
-                    Statement statement;
                     if (!query.isEmpty()) {
                         statement = connection.createStatement();
                         statement.execute(query);
@@ -119,6 +119,13 @@ public abstract class ZukiDatabase {
                     }
                 }
             } catch (Throwable throwable) {
+                if (statement != null) {
+                    try {
+                        statement.close();
+                    } catch (SQLException exception) {
+                        System.err.println("Unclosed statement... Message: " + exception.getMessage());
+                    }
+                }
                 System.err.println("Throwed SQL exception on stream method.");
                 System.err.println("Message: " + throwable.getMessage());
                 System.err.println("Stacktrace:");
@@ -168,8 +175,7 @@ public abstract class ZukiDatabase {
                 Thread.currentThread().getStackTrace().length);
 
         return CompletableFuture.supplyAsync(() -> {
-            try (Connection connection = connection()) {
-                Statement statement = args.length == 0 ? connection.createStatement() : connection.prepareStatement(query);
+            try (Connection connection = connection(); Statement statement = args.length == 0 ? connection.createStatement() : connection.prepareStatement(query)) {
                 if (args.length == 0) {
                     statement.execute(query);
                 } else {
@@ -184,10 +190,6 @@ public abstract class ZukiDatabase {
                 if (callback != null) {
                     callback.run(statement.getUpdateCount());
                 }
-                if (statement.getResultSet() != null) {
-                    statement.getResultSet().close();
-                }
-                statement.close();
             } catch (SQLException exception) {
                 System.err.println("Throwed SQL exception on update method. Stacktrace:");
                 System.err.println("Message: " + exception.getMessage());
@@ -216,9 +218,8 @@ public abstract class ZukiDatabase {
                 Thread.currentThread().getStackTrace().length);
 
         return CompletableFuture.supplyAsync(() -> {
-            try (Connection connection = connection()) {
-                Statement statement = args.length == 0 ? connection.createStatement(resultSetType, resultSetConcurrency) :
-                        connection.prepareStatement(query, resultSetType, resultSetConcurrency);
+            try (Connection connection = connection(); Statement statement = args.length == 0 ? connection.createStatement(resultSetType, resultSetConcurrency) :
+                    connection.prepareStatement(query, resultSetType, resultSetConcurrency)) {
 
                 if (args.length == 0) {
                     statement.execute(query);
@@ -238,7 +239,6 @@ public abstract class ZukiDatabase {
                 } catch (Throwable throwable) {
                     throwable.printStackTrace();
                 }
-                statement.close();
             } catch (SQLException exception) {
                 System.err.println("Throwed SQL exception on select method. Stacktrace:");
                 System.err.println("Message: " + exception.getMessage());
