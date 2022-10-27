@@ -100,8 +100,9 @@ public abstract class ZukiDatabase {
      */
     public ZukiDatabase stream(@NotNull InputStream stream) {
         // real stacktrace
-        StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
-                Thread.currentThread().getStackTrace().length);
+        StackTraceElement[] sourceStackTrace = Thread.currentThread().getStackTrace();
+        StackTraceElement[] stackTrace = Arrays.copyOfRange(sourceStackTrace, 2,
+                sourceStackTrace.length);
 
         service.execute(() -> {
             Statement statement = null;
@@ -171,8 +172,9 @@ public abstract class ZukiDatabase {
      */
     public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, UpdateCallback callback, Object... args) {
         // real stacktrace
-        StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
-                Thread.currentThread().getStackTrace().length);
+        StackTraceElement[] sourceStackTrace = Thread.currentThread().getStackTrace();
+        StackTraceElement[] stackTrace = Arrays.copyOfRange(sourceStackTrace, 2,
+                sourceStackTrace.length);
 
         return CompletableFuture.supplyAsync(() -> {
             try (Connection connection = connection(); Statement statement = args.length == 0 ? connection.createStatement() : connection.prepareStatement(query)) {
@@ -214,8 +216,9 @@ public abstract class ZukiDatabase {
     @SneakyThrows
     public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, SelectCallback callback, Object... args) {
         // real stacktrace
-        StackTraceElement[] stackTrace = Arrays.copyOfRange(Thread.currentThread().getStackTrace(), 2,
-                Thread.currentThread().getStackTrace().length);
+        StackTraceElement[] sourceStackTrace = Thread.currentThread().getStackTrace();
+        StackTraceElement[] stackTrace = Arrays.copyOfRange(sourceStackTrace, 2,
+                sourceStackTrace.length);
 
         return CompletableFuture.supplyAsync(() -> {
             try (Connection connection = connection(); Statement statement = args.length == 0 ? connection.createStatement(resultSetType, resultSetConcurrency) :
