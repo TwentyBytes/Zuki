@@ -7,23 +7,26 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
-import lombok.extern.log4j.Log4j;
-import lombok.extern.log4j.Log4j2;
+import lombok.extern.slf4j.Slf4j;
 import me.twentybytes.zuki.api.callback.SelectCallback;
 import me.twentybytes.zuki.api.callback.UpdateCallback;
-import org.apache.logging.log4j.Level;
+import me.twentybytes.zuki.api.request.Request;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
-
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.InputStream;
 import java.sql.*;
+import java.util.ArrayDeque;
 import java.util.Arrays;
+import java.util.Deque;
 import java.util.Scanner;
-import java.util.concurrent.*;
+import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 
-@Log4j2
+@Slf4j
 @Getter
 @SuppressWarnings({"all"})
 @FieldDefaults(level = AccessLevel.PROTECTED)
@@ -33,6 +36,9 @@ public abstract class ZukiDatabase {
     HikariConfig config;
     HikariDataSource source;
     ScheduledExecutorService service = Executors.newScheduledThreadPool(3);
+    Deque<Request> queue = new ArrayDeque<>();
+
+    boolean lock;
 
     /**
      * ResultSet type.
@@ -126,15 +132,15 @@ public abstract class ZukiDatabase {
                     try {
                         statement.close();
                     } catch (SQLException exception) {
-                        log.log(Level.ERROR,"Unclosed statement... Message: " + exception.getMessage());
+                        log.error("Unclosed statement... Message: " + exception.getMessage());
                     }
                 }
 
-                log.log(Level.ERROR, "Throwed SQL exception on stream method.");
-                log.log(Level.ERROR, "Message: " + throwable.getMessage());
-                log.log(Level.ERROR, "Stacktrace:");
+                log.error("Throwed SQL exception on stream method.");
+                log.error("Message: " + throwable.getMessage());
+                log.error("Stacktrace:");
                 for (StackTraceElement traceElement : stackTrace) {
-                    log.log(Level.ERROR, "\tat " + traceElement);
+                    log.error("\tat " + traceElement);
                 }
             }
         });
@@ -146,124 +152,10 @@ public abstract class ZukiDatabase {
      *
      * @param query    executing mysql command.
      * @param callback query callback.
-     * @param timeoutRunnable runnable calling if base
-     *                        call doesnt back result.
-     * @param timeOut call timeout
      * @param args     arguments for prepared statement.
      * @return {@link CompletableFuture<Void>} result set.
      */
-    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, UpdateCallback callback, Runnable timeoutRunnable, long timeOut, Object... args) {
-        CompletableFuture<Void> future = update(query, callback, args);
-
-        service.schedule(() -> {
-            if (!future.isDone()) {
-                timeoutRunnable.run();
-            }
-        }, timeOut, TimeUnit.MILLISECONDS);
-
-        return future;
-    }
-
-    /**
-     * Use for non-update queries... (SELECT)
-     *
-     * @param query    executing mysql command.
-     * @param callback query callback.
-     * @param timeoutRunnable runnable calling if base
-     *                        call doesnt back result.
-     * @param timeOut call timeout
-     * @param args     arguments for prepared statement.
-     * @return {@link CompletableFuture<Void>} result set.
-     */
-    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, SelectCallback callback, Runnable timeoutRunnable, long timeOut, Object... args) {
-        CompletableFuture<Void> future = select(query, callback, args);
-
-        service.schedule(() -> {
-            if (!future.isDone()) {
-                timeoutRunnable.run();
-            }
-        }, timeOut, TimeUnit.MILLISECONDS);
-
-        return future;
-    }
-
-
-    /**
-     * Use for update queries... (UPDATE, INSERT...)
-     *
-     * @param query    executing mysql command.
-     * @param timeoutRunnable runnable calling if base
-     *                        call doesnt back result.
-     * @param timeOut call timeout
-     * @param args     arguments for prepared statement.
-     * @return {@link CompletableFuture<Void>} result set.
-     */
-    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, Runnable timeoutRunnable, long timeOut, Object... args) {
-        CompletableFuture<Void> future = update(query, args);
-
-        service.schedule(() -> {
-            if (!future.isDone()) {
-                timeoutRunnable.run();
-            }
-        }, timeOut, TimeUnit.MILLISECONDS);
-
-        return future;
-    }
-
-    /**
-     * Use for non-update queries... (SELECT)
-     *
-     * @param query    executing mysql command.
-     * @param timeoutRunnable runnable calling if base
-     *                        call doesnt back result.
-     * @param timeOut call timeout
-     * @param args     arguments for prepared statement.
-     * @return {@link CompletableFuture<Void>} result set.
-     */
-    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, Runnable timeoutRunnable, long timeOut, Object... args) {
-        CompletableFuture<Void> future = select(query, args);
-
-        service.schedule(() -> {
-            if (!future.isDone()) {
-                timeoutRunnable.run();
-            }
-        }, timeOut, TimeUnit.MILLISECONDS);
-
-        return future;
-    }
-
-    /**
-     * Use for update queries... (UPDATE, INSERT...)
-     *
-     * @param query    executing mysql command.
-     * @param args     arguments for prepared statement.
-     * @return {@link CompletableFuture<Void>} result set.
-     */
-    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, Object... args) {
-        return update(query, null, args);
-    }
-
-    /**
-     * Use for non-update queries... (SELECT)
-     *
-     * @param query    executing mysql command.
-     * @param args     arguments for prepared statement.
-     * @return {@link CompletableFuture<Void>} result set.
-     */
-    @SneakyThrows
-    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, Object... args) {
-        return select(query, null, args);
-    }
-
-    /**
-     * Use for update queries... (UPDATE, INSERT...)
-     *
-     * @param query    executing mysql command.
-     * @param callback query callback.
-     * @param args     arguments for prepared statement.
-     * @return {@link CompletableFuture<Void>} result set.
-     */
-    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, UpdateCallback callback, Object... args) {
+    protected CompletableFuture<Void> update(@NotNull @Language("SQL") String query, boolean queued, UpdateCallback callback, Object... args) {
         // real stacktrace
         StackTraceElement[] sourceStackTrace = Thread.currentThread().getStackTrace();
         StackTraceElement[] stackTrace = Arrays.copyOfRange(sourceStackTrace, 2,
@@ -285,16 +177,23 @@ public abstract class ZukiDatabase {
                 if (callback != null) {
                     callback.run(statement.getUpdateCount());
                 }
+
+                if (queued) {
+                    lock = false;
+                    if (!queue.isEmpty()) {
+                        execute(queue.poll());
+                    }
+                }
             } catch (SQLException exception) {
-                log.log(Level.ERROR, "Throwed SQL exception on update method. Stacktrace:");
-                log.log(Level.ERROR, "Message: " + exception.getMessage());
-                log.log(Level.ERROR, "Stacktrace: ");
+                log.error("Throwed SQL exception on update method. Stacktrace:");
+                log.error("Message: " + exception.getMessage());
+                log.error("Stacktrace: ");
                 for (StackTraceElement traceElement : stackTrace) {
-                    log.log(Level.ERROR, "\tat " + traceElement);
+                    log.error("\tat " + traceElement);
                 }
             }
             return null;
-        });
+        }, service);
     }
 
     /**
@@ -306,7 +205,7 @@ public abstract class ZukiDatabase {
      * @return {@link CompletableFuture<Void>} result set.
      */
     @SneakyThrows
-    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, SelectCallback callback, Object... args) {
+    protected CompletableFuture<Void> select(@NotNull @Language("SQL") String query, boolean queued, SelectCallback callback, Object... args) {
         // real stacktrace
         StackTraceElement[] sourceStackTrace = Thread.currentThread().getStackTrace();
         StackTraceElement[] stackTrace = Arrays.copyOfRange(sourceStackTrace, 2,
@@ -331,20 +230,65 @@ public abstract class ZukiDatabase {
                     if (callback != null) {
                         callback.run(set);
                     }
+
+                    if (queued) {
+                        lock = false;
+                        if (!queue.isEmpty()) {
+                            execute(queue.poll());
+                        }
+                    }
                 } catch (Throwable throwable) {
                     throwable.printStackTrace();
                 }
             } catch (SQLException exception) {
-                log.log(Level.ERROR, "Throwed SQL exception on select method. Stacktrace:");
-                log.log(Level.ERROR, "Message: " + exception.getMessage());
-                log.log(Level.ERROR, "Stacktrace:");
+                log.error("Throwed SQL exception on select method. Stacktrace:");
+                log.error("Message: " + exception.getMessage());
+                log.error("Stacktrace:");
                 for (StackTraceElement traceElement : stackTrace) {
-                    log.log(Level.ERROR, "\tat " + traceElement);
+                    log.error("\tat " + traceElement);
                 }
             }
             return null;
-        });
+        }, service);
 
+    }
+
+    @SneakyThrows
+    public ZukiDatabase execute(Request request) {
+        if (request.getBody() == null || request.getBody().isEmpty()) {
+            throw new IllegalStateException("Illegal state: request body is empty or null");
+        }
+
+        if (request.isQueue()) {
+            if (lock) {
+                queue.add(request);
+                return this;
+            } else {
+                lock = true;
+            }
+        }
+
+        final CompletableFuture<Void> future;
+        switch (request.getRequestType()) {
+            case UPDATE -> {
+                future = update(request.getBody(), request.isQueue(), (UpdateCallback) request.getCallback(), request.getArgs());
+            }
+            default -> future = select(request.getBody(), request.isQueue(), (SelectCallback) request.getCallback(), request.getArgs());
+        }
+
+        if (request.getTimeoutRunnable() != null) {
+            service.schedule(() -> {
+                if (!future.isDone()) {
+                    request.getTimeoutRunnable().run();
+                }
+            }, request.getTimeout(), TimeUnit.MILLISECONDS);
+        }
+
+        if (request.isSync()) {
+            future.get();
+        }
+
+        return this;
     }
 
 }
