@@ -3,7 +3,7 @@ plugins {
 }
 
 group 'me.twentybytes'
-version '1.4.2'
+version '1.4.4'
 
 repositories {
     mavenCentral()
@@ -19,6 +19,11 @@ dependencies {
 
     implementation 'org.json:json:20220924'
     implementation 'org.yaml:snakeyaml:1.33'
+
+    implementation 'org.apache.logging.log4j:log4j:2.19.0'
+    implementation 'org.apache.logging.log4j:log4j-api:2.19.0'
+    implementation 'org.apache.logging.log4j:log4j-core:2.19.0'
+    implementation 'org.apache.logging.log4j:log4j-iostreams:2.19.0'
 }
 
 tasks.withType(JavaCompile) {

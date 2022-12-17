@@ -7,8 +7,11 @@ import lombok.Getter;
 import lombok.Setter;
 import lombok.SneakyThrows;
 import lombok.experimental.FieldDefaults;
+import lombok.extern.log4j.Log4j;
+import lombok.extern.log4j.Log4j2;
 import me.twentybytes.zuki.api.callback.SelectCallback;
 import me.twentybytes.zuki.api.callback.UpdateCallback;
+import org.apache.logging.log4j.Level;
 import org.intellij.lang.annotations.Language;
 import org.jetbrains.annotations.NotNull;
 
@@ -18,10 +21,9 @@ import java.io.InputStream;
 import java.sql.*;
 import java.util.Arrays;
 import java.util.Scanner;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
+import java.util.concurrent.*;
 
+@Log4j2
 @Getter
 @SuppressWarnings({"all"})
 @FieldDefaults(level = AccessLevel.PROTECTED)
@@ -30,7 +32,7 @@ public abstract class ZukiDatabase {
     @Setter
     HikariConfig config;
     HikariDataSource source;
-    ExecutorService service = Executors.newFixedThreadPool(2);
+    ScheduledExecutorService service = Executors.newScheduledThreadPool(3);
 
     /**
      * ResultSet type.
@@ -124,19 +126,110 @@ public abstract class ZukiDatabase {
                     try {
                         statement.close();
                     } catch (SQLException exception) {
-                        System.err.println("Unclosed statement... Message: " + exception.getMessage());
+                        log.log(Level.ERROR,"Unclosed statement... Message: " + exception.getMessage());
                     }
                 }
-                System.err.println("Throwed SQL exception on stream method.");
-                System.err.println("Message: " + throwable.getMessage());
-                System.err.println("Stacktrace:");
+
+                log.log(Level.ERROR, "Throwed SQL exception on stream method.");
+                log.log(Level.ERROR, "Message: " + throwable.getMessage());
+                log.log(Level.ERROR, "Stacktrace:");
                 for (StackTraceElement traceElement : stackTrace) {
-                    System.err.println("\tat " + traceElement);
+                    log.log(Level.ERROR, "\tat " + traceElement);
                 }
-                //throwable.printStackTrace();
             }
         });
         return this;
+    }
+
+    /**
+     * Use for update queries... (UPDATE, INSERT...)
+     *
+     * @param query    executing mysql command.
+     * @param callback query callback.
+     * @param timeoutRunnable runnable calling if base
+     *                        call doesnt back result.
+     * @param timeOut call timeout
+     * @param args     arguments for prepared statement.
+     * @return {@link CompletableFuture<Void>} result set.
+     */
+    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, UpdateCallback callback, Runnable timeoutRunnable, long timeOut, Object... args) {
+        CompletableFuture<Void> future = update(query, callback, args);
+
+        service.schedule(() -> {
+            if (!future.isDone()) {
+                timeoutRunnable.run();
+            }
+        }, timeOut, TimeUnit.MILLISECONDS);
+
+        return future;
+    }
+
+    /**
+     * Use for non-update queries... (SELECT)
+     *
+     * @param query    executing mysql command.
+     * @param callback query callback.
+     * @param timeoutRunnable runnable calling if base
+     *                        call doesnt back result.
+     * @param timeOut call timeout
+     * @param args     arguments for prepared statement.
+     * @return {@link CompletableFuture<Void>} result set.
+     */
+    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, SelectCallback callback, Runnable timeoutRunnable, long timeOut, Object... args) {
+        CompletableFuture<Void> future = select(query, callback, args);
+
+        service.schedule(() -> {
+            if (!future.isDone()) {
+                timeoutRunnable.run();
+            }
+        }, timeOut, TimeUnit.MILLISECONDS);
+
+        return future;
+    }
+
+
+    /**
+     * Use for update queries... (UPDATE, INSERT...)
+     *
+     * @param query    executing mysql command.
+     * @param timeoutRunnable runnable calling if base
+     *                        call doesnt back result.
+     * @param timeOut call timeout
+     * @param args     arguments for prepared statement.
+     * @return {@link CompletableFuture<Void>} result set.
+     */
+    public CompletableFuture<Void> update(@NotNull @Language("SQL") String query, Runnable timeoutRunnable, long timeOut, Object... args) {
+        CompletableFuture<Void> future = update(query, args);
+
+        service.schedule(() -> {
+            if (!future.isDone()) {
+                timeoutRunnable.run();
+            }
+        }, timeOut, TimeUnit.MILLISECONDS);
+
+        return future;
+    }
+
+    /**
+     * Use for non-update queries... (SELECT)
+     *
+     * @param query    executing mysql command.
+     * @param timeoutRunnable runnable calling if base
+     *                        call doesnt back result.
+     * @param timeOut call timeout
+     * @param args     arguments for prepared statement.
+     * @return {@link CompletableFuture<Void>} result set.
+     */
+    public CompletableFuture<Void> select(@NotNull @Language("SQL") String query, Runnable timeoutRunnable, long timeOut, Object... args) {
+        CompletableFuture<Void> future = select(query, args);
+
+        service.schedule(() -> {
+            if (!future.isDone()) {
+                timeoutRunnable.run();
+            }
+        }, timeOut, TimeUnit.MILLISECONDS);
+
+        return future;
     }
 
     /**
@@ -193,13 +286,12 @@ public abstract class ZukiDatabase {
                     callback.run(statement.getUpdateCount());
                 }
             } catch (SQLException exception) {
-                System.err.println("Throwed SQL exception on update method. Stacktrace:");
-                System.err.println("Message: " + exception.getMessage());
-                System.err.println("Stacktrace: ");
+                log.log(Level.ERROR, "Throwed SQL exception on update method. Stacktrace:");
+                log.log(Level.ERROR, "Message: " + exception.getMessage());
+                log.log(Level.ERROR, "Stacktrace: ");
                 for (StackTraceElement traceElement : stackTrace) {
-                    System.err.println("\tat " + traceElement);
+                    log.log(Level.ERROR, "\tat " + traceElement);
                 }
-                //exception.printStackTrace();
             }
             return null;
         });
@@ -243,13 +335,12 @@ public abstract class ZukiDatabase {
                     throwable.printStackTrace();
                 }
             } catch (SQLException exception) {
-                System.err.println("Throwed SQL exception on select method. Stacktrace:");
-                System.err.println("Message: " + exception.getMessage());
-                System.err.println("Stacktrace:");
+                log.log(Level.ERROR, "Throwed SQL exception on select method. Stacktrace:");
+                log.log(Level.ERROR, "Message: " + exception.getMessage());
+                log.log(Level.ERROR, "Stacktrace:");
                 for (StackTraceElement traceElement : stackTrace) {
-                    System.err.println("\tat " + traceElement);
+                    log.log(Level.ERROR, "\tat " + traceElement);
                 }
-                //exception.printStackTrace();
             }
             return null;
         });
