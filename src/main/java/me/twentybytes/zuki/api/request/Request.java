@@ -24,6 +24,11 @@ public class Request {
         this.requestType = type;
     }
 
+    public Request body(@NotNull Query query) {
+        this.body = query.build();
+        return this;
+    }
+
     public Request body(@NotNull @Language("SQL") String body) {
         this.body = body;
         return this;
